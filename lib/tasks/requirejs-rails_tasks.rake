@@ -60,7 +60,7 @@ EOM
   end
 
   namespace :precompile do
-    task :primary => ["requirejs:precompile:prepare_source",
+    task :all => ["requirejs:precompile:prepare_source",
                   "requirejs:precompile:generate_rjs_driver",
                   "requirejs:precompile:run_rjs",
                   "requirejs:precompile:digestify_and_compress"]
@@ -78,7 +78,7 @@ EOM
     # We depend on test_node here so we'll fail early and hard if node
     # isn't available.
     task :external => ["requirejs:test_node"] do
-      Rake::Task["requirejs:precompile:primary"].invoke
+      Rake::Task["requirejs:precompile:all"].invoke
     end
 
     # copy all assets to tmp/assets
@@ -138,11 +138,11 @@ EOM
 
   desc "Precompile RequireJS-managed assets"
   task :precompile do
-    invoke_or_reboot_rake_task "requirejs:precompile:primary"
+    invoke_or_reboot_rake_task "requirejs:precompile:all"
   end
 end
 
-task "assets:precompile:primary" => ["requirejs:precompile:external"]
-if ARGV[0] == "requirejs:precompile:primary"
+task "assets:precompile" => ["requirejs:precompile:external"]
+if ARGV[0] == "requirejs:precompile:all"
   task "assets:environment" => ["requirejs:precompile:disable_js_compressor"]
 end
