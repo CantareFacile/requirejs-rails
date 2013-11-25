@@ -23,6 +23,14 @@ module RequirejsHelper
     end.join(" ")
   end
 
+  def _requirejs_data_main(name)
+    name += ".js" unless name =~ /\.js$/
+    _javascript_path(name).
+        sub(/\.js$/,'').
+        sub(baseUrl(name), '').
+        sub(/\A\//, '')
+  end
+
   def requirejs_include_tag(name = nil, options = {}, &block)
     requirejs = Rails.application.config.requirejs
 
@@ -69,7 +77,12 @@ module RequirejsHelper
       run_config['config'].merge! config_data
 
       run_config['baseUrl'] = baseUrl(name)
-      "var require = #{run_config.to_json};".html_safe
+      main_config = {
+        '_src' => _javascript_path(requirejs.bootstrap_file),
+        '_main' => _requirejs_data_main(name)
+      }
+      run_config.merge! main_config
+      "var require=#{run_config.to_json};".html_safe
     end
   end
 
