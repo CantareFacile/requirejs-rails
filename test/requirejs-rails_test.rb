@@ -9,7 +9,7 @@ class RequirejsRailsTest < ActiveSupport::TestCase
     assert_kind_of Module, Requirejs::Rails
     assert_kind_of Class, Requirejs::Rails::Engine
   end
-  
+
   test "require.js version" do
     require_js = Pathname.new(__FILE__+'/../../vendor/assets/javascripts/require.js').cleanpath.read
     context = ExecJS.compile(require_js)
@@ -77,12 +77,12 @@ class RequirejsRailsConfigTest < ActiveSupport::TestCase
 
   test "run_config should reject irrelevant settings" do
     @cfg.user_config = { 'optimize' => 'none' }
-    assert_nil @cfg.run_config['optimize'] 
+    assert_nil @cfg.run_config['optimize']
   end
 
   test "build_config should reject irrelevant settings" do
     @cfg.user_config = { 'priority' => %w{ foo bar baz } }
-    assert_nil @cfg.build_config['priority'] 
+    assert_nil @cfg.build_config['priority']
   end
 
   ## Almond tests
@@ -103,7 +103,7 @@ class RequirejsRailsConfigTest < ActiveSupport::TestCase
 end
 
 class RequirejsHelperTest < ActionView::TestCase
-  
+
   def setup
     controller.requirejs_included = false
     Rails.application.config.requirejs.user_config = {}
@@ -112,28 +112,28 @@ class RequirejsHelperTest < ActionView::TestCase
   end
 
   def with_cdn
-    Rails.application.config.requirejs.user_config = { 'paths' => 
+    Rails.application.config.requirejs.user_config = { 'paths' =>
       { 'jquery' => 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js' }
     }
   end
-  
+
   def wrap(tag)
     "<html><head>#{tag}</head></html>"
   end
-  
+
   test "requirejs_include_tag" do
     render :text => wrap(requirejs_include_tag)
-    assert_select "script:first-of-type", :text => /var require =/
+    assert_select "script:first-of-type", :text => /var require=/
     assert_select "script:last-of-type[src^=/javascripts/require.js]", :count => 1
   end
-  
+
   test "requirejs_include_tag_with_param" do
     render :text => wrap(requirejs_include_tag("application"))
     assert_select "script:last-of-type[src^=/javascripts/require.js][data-main^=javascripts/application]", :count => 1
   end
-  
+
   test "requirejs_include_tag_with_block" do
-    test_block = Proc.new do |controller| 
+    test_block = Proc.new do |controller|
       { 'class' => controller.class.to_s.demodulize }
     end
 
@@ -154,7 +154,7 @@ class RequirejsHelperTest < ActionView::TestCase
       Rails.application.config.assets.digest = true
       Rails.application.config.requirejs.user_config = { 'modules' => [{'name' => 'foo'}] }
       render :text => wrap(requirejs_include_tag)
-      assert_select "script:first-of-type", :text => %r[var require =.*"paths":{"foo":"/javascripts/foo"}]
+      assert_select "script:first-of-type", :text => %r[var require=.*"paths":{"foo":"/javascripts/foo"}]
     ensure
       Rails.application.config.assets.digest = saved_digest
     end
@@ -163,7 +163,7 @@ class RequirejsHelperTest < ActionView::TestCase
   test "requirejs_include_tag with CDN asset in paths" do
     with_cdn
     render :text => wrap(requirejs_include_tag)
-    assert_select "script:first-of-type", :text => %r{var require =.*paths.*http://ajax}
+    assert_select "script:first-of-type", :text => %r{var require=.*paths.*http://ajax}
   end
 
   test "requirejs_include_tag with CDN asset and digested asset paths" do
@@ -172,7 +172,7 @@ class RequirejsHelperTest < ActionView::TestCase
       saved_digest = Rails.application.config.assets.digest
       Rails.application.config.assets.digest = true
       render :text => wrap(requirejs_include_tag)
-      assert_select "script:first-of-type", :text => %r{var require =.*paths.*http://ajax}
+      assert_select "script:first-of-type", :text => %r{var require=.*paths.*http://ajax}
     ensure
       Rails.application.config.assets.digest = saved_digest
     end

@@ -24,11 +24,13 @@ module RequirejsHelper
   end
 
   def _requirejs_data_main(name)
-    name += ".js" unless name =~ /\.js$/
-    _javascript_path(name).
-        sub(/\.js$/,'').
-        sub(baseUrl(name), '').
-        sub(/\A\//, '')
+    if name
+      name += ".js" unless name =~ /\.js$/
+      _javascript_path(name).
+          sub(/\.js$/,'').
+          sub(baseUrl(name), '').
+          sub(/\A\//, '')
+    end
   end
 
   def requirejs_include_tag(name = nil, options = {}, &block)
