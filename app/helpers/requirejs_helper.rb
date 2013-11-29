@@ -13,7 +13,7 @@ module RequirejsHelper
         name += ".js" unless name =~ /\.js$/
         data['main'] = _javascript_path(name).
                         sub(/\.js$/,'').
-                        sub(baseUrl(name), '').
+                        sub(base_url(name), '').
                         sub(/\A\//, '')
       end
 
@@ -28,7 +28,7 @@ module RequirejsHelper
       name += ".js" unless name =~ /\.js$/
       _javascript_path(name).
           sub(/\.js$/,'').
-          sub(baseUrl(name), '').
+          sub(base_url(name), '').
           sub(/\A\//, '')
     end
   end
@@ -59,12 +59,13 @@ module RequirejsHelper
         run_config[:priority] ||= []
         run_config[:priority].concat _priority
       end
+      current_base_url = base_url(name)
       if Rails.application.config.assets.digest
         modules = requirejs.build_config['modules'].map { |m| requirejs.module_name_for m }
 
         # Generate digestified paths from the modules spec
         paths = {}
-        modules.each { |m| paths[m] = _javascript_path(m).sub /\.js$/,'' }
+        modules.each { |m| paths[m] = _javascript_path(m).sub(/\.js$/, '').sub("#{current_base_url}/", '') }
 
         if run_config.has_key? 'paths'
           # Add paths for assets specified by full URL (on a CDN)
@@ -78,7 +79,7 @@ module RequirejsHelper
       run_config['config'] ||= {}
       run_config['config'].merge! config_data
 
-      run_config['baseUrl'] = baseUrl(name)
+      run_config['baseUrl'] = current_base_url
       main_config = {
         '_src' => _javascript_path(requirejs.bootstrap_file),
         '_main' => _requirejs_data_main(name)
@@ -111,7 +112,7 @@ module RequirejsHelper
     end
   end
 
-  def baseUrl(js_asset)
+  def base_url(js_asset)
     js_asset_path = javascript_path(js_asset)
     uri = URI.parse(js_asset_path)
     asset_host = uri.host && js_asset_path.sub(uri.path, '')
