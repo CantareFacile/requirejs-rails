@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     requirejs-rails (1.0.0)
-      railties (>= 4.0, < 4.1)
+      railties (>= 4.0, < 5.0)
 
 GEM
   remote: http://rubygems.org/
