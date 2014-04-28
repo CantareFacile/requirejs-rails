@@ -10,6 +10,14 @@ require 'tempfile'
 require 'active_support/ordered_options'
 
 namespace :requirejs do
+  # This method was backported from an earlier version of Sprockets.
+  def ruby_rake_task(task, force = true)
+    env = ENV["RAILS_ENV"] || "production"
+    groups = ENV["RAILS_GROUPS"] || "assets"
+    args = [$0, task, "RAILS_ENV=#{env}", "RAILS_GROUPS=#{groups}"]
+    args << "--trace" if Rake.application.options.trace
+    ruby *args
+  end
 
   # From Rails 3 assets.rake; we have the same problem:
   #
@@ -17,7 +25,11 @@ namespace :requirejs do
   # and/or no explicit environment - we have to reinvoke rake to
   # execute this task.
   def invoke_or_reboot_rake_task(task)
-    Rake::Task[task].invoke
+    if ENV['RAILS_GROUPS'].to_s.empty? || ENV['RAILS_ENV'].to_s.empty?
+      ruby_rake_task task
+    else
+      Rake::Task[task].invoke
+    end
   end
 
   requirejs = ActiveSupport::OrderedOptions.new
@@ -54,7 +66,7 @@ namespace :requirejs do
 Unable to find 'node' on the current path, required for precompilation
 using the requirejs-ruby gem. To install node.js, see http://nodejs.org/
 OS X Homebrew users can use 'brew install node'.
-EOM
+      EOM
       exit 1
     end
   end
@@ -65,20 +77,13 @@ EOM
                   "requirejs:precompile:run_rjs",
                   "requirejs:precompile:digestify_and_compress"]
 
-    task :disable_js_compressor do
-      # Ensure that Sprockets doesn't try to compress assets before they hit
-      # r.js.  Failure to do this can cause a build which works in dev, but
-      # emits require.js "notloaded" errors, etc. in production.
-      Rails.application.config.assets.js_compressor = false
-    end
-
     # Invoke another ruby process if we're called from inside
     # assets:precompile so we don't clobber the environment
     #
     # We depend on test_node here so we'll fail early and hard if node
     # isn't available.
     task :external => ["requirejs:test_node"] do
-      Rake::Task["requirejs:precompile:all"].invoke
+      ruby_rake_task "requirejs:precompile:all"
     end
 
     # copy all assets to tmp/assets
@@ -103,9 +108,9 @@ EOM
                       "requirejs:test_node"] do
       requirejs.config.target_dir.mkpath
 
-      `node "#{requirejs.config.driver_path}"`
+      result = `node "#{requirejs.config.driver_path}"`
       unless $?.success?
-        raise RuntimeError, "Asset compilation with node failed."
+        raise RuntimeError, "Asset compilation with node failed with error:\n\n#{result}\n"
       end
     end
 
@@ -121,16 +126,15 @@ EOM
         FileUtils.cp built_asset_path, digest_asset_path
 
         # Create the compressed versions
-        File.open("#{built_asset_path}.gz",'wb') do |f|
+        File.open("#{built_asset_path}.gz", 'wb') do |f|
           zgw = Zlib::GzipWriter.new(f, Zlib::BEST_COMPRESSION)
           zgw.write built_asset_path.read
           zgw.close
         end
         FileUtils.cp "#{built_asset_path}.gz", "#{digest_asset_path}.gz"
-        FileUtils.rm [built_asset_path, "#{built_asset_path}.gz"]
 
         requirejs.config.manifest_path.open('wb') do |f|
-          YAML.dump(requirejs.manifest,f)
+          YAML.dump(requirejs.manifest, f)
         end
       end
     end
@@ -143,6 +147,3 @@ EOM
 end
 
 task "assets:precompile" => ["requirejs:precompile:external"]
-if ARGV[0] == "requirejs:precompile:all"
-  task "assets:environment" => ["requirejs:precompile:disable_js_compressor"]
-end

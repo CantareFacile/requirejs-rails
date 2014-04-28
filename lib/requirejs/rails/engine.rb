@@ -5,10 +5,9 @@ require 'pathname'
 module Requirejs
   module Rails
     class Engine < ::Rails::Engine
-
       ### Configuration setup
-      config.before_configuration do
-        config.requirejs = Requirejs::Rails::Config.new
+      config.before_configuration do |app|
+        config.requirejs = Requirejs::Rails::Config.new(app)
         config.requirejs.precompile = [/require\.js$/]
       end
 
@@ -17,12 +16,21 @@ module Requirejs
 
         # Process the user config file in #before_initalization (instead of #before_configuration) so that
         # environment-specific configuration can be injected into the user configuration file
-        process_user_config_file(app, config)
+        Engine.process_user_config_file(app, config)
 
         config.assets.precompile += config.requirejs.precompile
 
+        # Check for the existence of the requirejs:precompile:all top-level Rake task and disable asset pipeline
+        # compression to ensure that `r.js` gets uncompressed assets.
+        Rake.application.top_level_tasks.each do |task_name|
+          case task_name
+            when "requirejs:precompile:all"
+              config.assets.js_compressor = false
+          end
+        end if defined?(Rake.application)
+
         manifest_directory = config.assets.manifest || File.join(::Rails.public_path, config.assets.prefix)
-        manifest_path      = File.join(manifest_directory, "rjs_manifest.yml")
+        manifest_path = File.join(manifest_directory, "rjs_manifest.yml")
         config.requirejs.manifest_path = Pathname.new(manifest_path)
       end
 
@@ -35,26 +43,34 @@ module Requirejs
         end
       end
 
-      config.after_initialize do |app|
-        config = app.config
-        rails_manifest_path = File.join(app.root, 'public', config.assets.prefix)
-        rails_manifest = Sprockets::Manifest.new(app.assets, rails_manifest_path)
-        if config.requirejs.manifest_path.exist? && rails_manifest
-          rjs_digests = YAML.load(ERB.new(File.new(config.requirejs.manifest_path).read).result)
-          rails_manifest.assets.merge!(rjs_digests)
-          ActionView::Base.instance_eval do
-            self.assets_manifest = rails_manifest
+      if ::Rails::VERSION::STRING >= "4.0.0"
+        config.after_initialize do |app|
+          config = app.config
+          rails_manifest_path = File.join(app.root, 'public', config.assets.prefix)
+          rails_manifest = Sprockets::Manifest.new(app.assets, rails_manifest_path)
+          if config.requirejs.manifest_path.exist? && rails_manifest
+            rjs_digests = YAML.load(ERB.new(File.new(config.requirejs.manifest_path).read).result)
+            rails_manifest.assets.merge!(rjs_digests)
+            ActionView::Base.instance_eval do
+              self.assets_manifest = rails_manifest
+            end
+          end
+        end
+      else
+        initializer "requirejs.manifest", :after => "sprockets.environment" do |app|
+          config = app.config
+          if config.requirejs.manifest_path.exist? && config.assets.digests
+            rjs_digests = YAML.load(ERB.new(File.new(config.requirejs.manifest_path).read).result)
+            config.assets.digests.merge!(rjs_digests)
           end
         end
       end
-
-      private
 
       # Process the user-supplied config parameters, which will be
       # merged with the default params.  It should be a YAML file with
       # a single top-level hash, keys/values corresponding to require.js
       # config parameters.
-      def process_user_config_file(app, config)
+      def self.process_user_config_file(app, config)
         config_path = Pathname.new(app.paths["config"].first)
         config.requirejs.user_config_file = config_path+'requirejs.yml'
 
