@@ -10,7 +10,7 @@ var requirejs = require('<%= rjs_path %>'),
     JSON.pretty_generate(modifiedHash)
   %>;
 
-basConfig.onBuildWrite = function(id, path, contents) {
+baseConfig.onBuildWrite = function(id, path, contents) {
   if ((/\(function\(\)\{define\(/).test(contents)) {
     // Remove Coffeescript wrapper
     contents = contents.replace(/\(function\(\)\{(define\(.+?)\}\)\.call\(this\);/, '$1');
