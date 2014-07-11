@@ -49,7 +49,7 @@ module RequirejsHelper
     end
   end
 
-  def requirejs_config_js(name = nil, config_data = {})
+  def requirejs_config_js(name = nil, with: [], config: {})
     requirejs = Rails.application.config.requirejs
 
     unless requirejs.run_config.empty?
@@ -61,11 +61,17 @@ module RequirejsHelper
       end
       current_base_url = base_url(name)
       if Rails.application.config.assets.digest
-        modules = requirejs.build_config['modules'].map { |m| requirejs.module_name_for m }
 
         # Generate digestified paths from the modules spec
         paths = {}
-        modules.each { |m| paths[m] = _javascript_path(m).sub(/\.js$/, '').sub("#{current_base_url}/", '') }
+        with = *with
+        requirejs.build_config['modules'].each do |m|
+          module_name = requirejs.module_name_for m
+          if m['private']
+            next unless with.include?(module_name)
+          end
+          paths[module_name] = _javascript_path(module_name).sub(/\.js$/, '').sub("#{current_base_url}/", '')
+        end
 
         if run_config.has_key? 'paths'
           # Add paths for assets specified by full URL (on a CDN)
@@ -77,7 +83,7 @@ module RequirejsHelper
         run_config['paths'] = paths
       end
       run_config['config'] ||= {}
-      run_config['config'].merge! config_data
+      run_config['config'].merge! config
 
       run_config['baseUrl'] = current_base_url
       main_config = {
